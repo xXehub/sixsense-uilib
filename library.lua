@@ -3243,9 +3243,8 @@ do
         Info.Columns = Info.Columns or {"Column 1", "Column 2"}
         Info.Rows = Info.Rows or {}
         Info.MaxRows = Info.MaxRows or 10
-        Info.RowHeight = Info.RowHeight or 20
-        Info.HeaderHeight = Info.HeaderHeight or 24
-        Info.Scrollable = Info.Scrollable ~= false
+        Info.RowHeight = Info.RowHeight or 18
+        Info.HeaderHeight = Info.HeaderHeight or 20
         Info.Visible = Info.Visible ~= false
 
         local Groupbox = self
@@ -3262,29 +3261,35 @@ do
         }
 
         -- Calculate table height
-        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 4
+        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 2
 
         -- Main table container
         local TableFrame = New("Frame", {
             BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
-            BorderSizePixel = 1,
             Size = UDim2.new(1, 0, 0, tableHeight),
             ClipsDescendants = true,
             Parent = Container,
+        })
+        
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Parent = TableFrame,
+        })
+        
+        New("UICorner", {
+            CornerRadius = UDim.new(0, 4),
+            Parent = TableFrame,
         })
 
         -- Header row
         local HeaderFrame = New("Frame", {
             BackgroundColor3 = "AccentColor",
-            BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, Info.HeaderHeight),
             Parent = TableFrame,
         })
-
-        local HeaderLayout = New("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            SortOrder = Enum.SortOrder.LayoutOrder,
+        
+        New("UICorner", {
+            CornerRadius = UDim.new(0, 4),
             Parent = HeaderFrame,
         })
 
@@ -3293,71 +3298,50 @@ do
         for i, colName in ipairs(Info.Columns) do
             New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(columnWidth, 0, 1, 0),
+                Position = UDim2.new(columnWidth * (i - 1), 4, 0, 0),
+                Size = UDim2.new(columnWidth, -8, 1, 0),
                 Text = colName,
-                TextSize = 13,
-                TextColor3 = "FontColor",
-                LayoutOrder = i,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = HeaderFrame,
             })
         end
 
-        -- Scrolling frame for rows
-        local ScrollFrame = New("ScrollingFrame", {
+        -- Content frame for rows
+        local ContentFrame = New("Frame", {
             BackgroundTransparency = 1,
-            BorderSizePixel = 0,
             Position = UDim2.new(0, 0, 0, Info.HeaderHeight),
             Size = UDim2.new(1, 0, 1, -Info.HeaderHeight),
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            ScrollBarThickness = Info.Scrollable and 4 or 0,
-            ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
-            ScrollingEnabled = Info.Scrollable,
+            ClipsDescendants = true,
             Parent = TableFrame,
         })
 
-        local RowLayout = New("UIListLayout", {
-            FillDirection = Enum.FillDirection.Vertical,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = ScrollFrame,
-        })
-
         -- Row container reference
-        TableObj.ScrollFrame = ScrollFrame
-        TableObj.RowLayout = RowLayout
+        TableObj.ContentFrame = ContentFrame
         TableObj.TableFrame = TableFrame
+        TableObj.ColumnWidth = columnWidth
 
         function TableObj:CreateRow(rowData, layoutOrder)
+            local yPos = (layoutOrder - 1) * self.RowHeight
+            
             local RowFrame = New("Frame", {
-                BackgroundColor3 = "MainColor",
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, -4, 0, self.RowHeight),
-                LayoutOrder = layoutOrder or #self.Rows + 1,
-                Parent = ScrollFrame,
-            })
-
-            -- Alternating row colors
-            if layoutOrder and layoutOrder % 2 == 0 then
-                RowFrame.BackgroundTransparency = 0.3
-            else
-                RowFrame.BackgroundTransparency = 0.5
-            end
-
-            local CellLayout = New("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Parent = RowFrame,
+                BackgroundTransparency = (layoutOrder % 2 == 0) and 0.9 or 1,
+                BackgroundColor3 = "OutlineColor",
+                Position = UDim2.new(0, 0, 0, yPos),
+                Size = UDim2.new(1, 0, 0, self.RowHeight),
+                Parent = ContentFrame,
             })
 
             local cells = {}
             for i, cellData in ipairs(rowData) do
                 local CellLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(columnWidth, 0, 1, 0),
+                    Position = UDim2.new(self.ColumnWidth * (i - 1), 4, 0, 0),
+                    Size = UDim2.new(self.ColumnWidth, -8, 1, 0),
                     Text = tostring(cellData),
-                    TextSize = 12,
-                    TextColor3 = "FontColor",
+                    TextSize = 11,
+                    TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
-                    LayoutOrder = i,
                     Parent = RowFrame,
                 })
                 table.insert(cells, CellLabel)
@@ -3373,17 +3357,16 @@ do
         function TableObj:AddRow(rowData)
             local row = self:CreateRow(rowData, #self.Rows + 1)
             table.insert(self.Rows, row)
-            self:UpdateCanvasSize()
             return row
         end
 
         function TableObj:SetRows(rowsData)
             self:Clear()
             for i, rowData in ipairs(rowsData) do
+                if i > self.MaxRows then break end
                 local row = self:CreateRow(rowData, i)
                 table.insert(self.Rows, row)
             end
-            self:UpdateCanvasSize()
         end
 
         function TableObj:Clear()
@@ -3393,12 +3376,6 @@ do
                 end
             end
             self.Rows = {}
-            self:UpdateCanvasSize()
-        end
-
-        function TableObj:UpdateCanvasSize()
-            local totalHeight = #self.Rows * self.RowHeight
-            ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
         end
 
         function TableObj:SetVisible(Visible)
