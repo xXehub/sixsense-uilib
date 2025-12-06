@@ -3519,7 +3519,6 @@ do
             self.SortColumn = nil
             self.SortAscending = true
         end
-        end
 
         function TableObj:SetVisible(Visible)
             self.Visible = Visible
