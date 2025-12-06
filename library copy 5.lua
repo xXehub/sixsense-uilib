@@ -7520,55 +7520,16 @@ function Library:CreateWindow(WindowInfo)
                 Tabs = {},
             }
 
-            function Tabbox:AddTab(Name, Icon)
-                local hasIcon = Icon ~= nil
-                
+            function Tabbox:AddTab(Name)
                 local Button = New("TextButton", {
                     BackgroundColor3 = "MainColor",
                     BackgroundTransparency = 0,
                     Size = UDim2.fromOffset(0, 34),
-                    Text = hasIcon and "" or Name,
+                    Text = Name,
                     TextSize = 15,
                     TextTransparency = 0.5,
                     Parent = TabboxButtons,
                 })
-                
-                -- Add icon + text layout if icon provided
-                if hasIcon then
-                    local iconData = Library:GetIcon(Icon)
-                    
-                    New("UIListLayout", {
-                        FillDirection = Enum.FillDirection.Horizontal,
-                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-                        VerticalAlignment = Enum.VerticalAlignment.Center,
-                        Padding = UDim.new(0, 4),
-                        Parent = Button,
-                    })
-                    
-                    New("ImageLabel", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.fromOffset(14, 14),
-                        Image = iconData and iconData.Url or "",
-                        ImageRectOffset = iconData and iconData.ImageRectOffset or Vector2.zero,
-                        ImageRectSize = iconData and iconData.ImageRectSize or Vector2.zero,
-                        ImageColor3 = "FontColor",
-                        ImageTransparency = 0.5,
-                        Parent = Button,
-                        Name = "TabIcon",
-                    })
-                    
-                    New("TextLabel", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.fromOffset(0, 14),
-                        AutomaticSize = Enum.AutomaticSize.X,
-                        Text = Name,
-                        TextSize = 15,
-                        TextColor3 = "FontColor",
-                        TextTransparency = 0.5,
-                        Parent = Button,
-                        Name = "TabText",
-                    })
-                end
 
                 local Line = Library:MakeLine(Button, {
                     AnchorPoint = Vector2.new(0, 1),
@@ -7612,12 +7573,6 @@ function Library:CreateWindow(WindowInfo)
                     Button.BackgroundTransparency = 1
                     Button.TextTransparency = 0
                     Line.Visible = false
-                    
-                    -- Update icon transparency if exists
-                    local tabIcon = Button:FindFirstChild("TabIcon")
-                    local tabText = Button:FindFirstChild("TabText")
-                    if tabIcon then tabIcon.ImageTransparency = 0 end
-                    if tabText then tabText.TextTransparency = 0 end
 
                     Container.Visible = true
 
@@ -7629,13 +7584,6 @@ function Library:CreateWindow(WindowInfo)
                     Button.BackgroundTransparency = 0
                     Button.TextTransparency = 0.5
                     Line.Visible = true
-                    
-                    -- Update icon transparency if exists
-                    local tabIcon = Button:FindFirstChild("TabIcon")
-                    local tabText = Button:FindFirstChild("TabText")
-                    if tabIcon then tabIcon.ImageTransparency = 0.5 end
-                    if tabText then tabText.TextTransparency = 0.5 end
-                    
                     Container.Visible = false
 
                     Tabbox.ActiveTab = nil
