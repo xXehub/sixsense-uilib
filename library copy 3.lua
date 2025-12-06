@@ -2672,21 +2672,6 @@ do
             KeyPicker:Update()
         end))
 
-        -- Add polling for Hold/Always modes to sync with Toggle
-        if ParentObj.Type == "Toggle" and KeyPicker.SyncToggleState then
-            local lastHoldState = false
-            Library:GiveSignal(RunService.Heartbeat:Connect(function()
-                if Library.Unloaded then return end
-                if KeyPicker.Mode ~= "Hold" and KeyPicker.Mode ~= "Always" then return end
-                
-                local currentState = KeyPicker:GetState()
-                if currentState ~= lastHoldState then
-                    lastHoldState = currentState
-                    ParentObj:SetValue(currentState)
-                end
-            end))
-        end
-
         KeyPicker:Update()
 
         if ParentObj.Addons then
@@ -3276,38 +3261,36 @@ do
         }
 
         -- Calculate table height
-        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 4
+        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 2
 
-        -- Main holder frame
-        local Holder = New("Frame", {
-            BackgroundTransparency = 1,
+        -- Main table container
+        local TableFrame = New("Frame", {
+            BackgroundColor3 = "MainColor",
             Size = UDim2.new(1, 0, 0, tableHeight),
-            Visible = Info.Visible,
+            ClipsDescendants = true,
             Parent = Container,
         })
-
-        -- Main table container with scroll
-        local TableFrame = New("ScrollingFrame", {
-            BackgroundColor3 = "MainColor",
-            BorderColor3 = "OutlineColor",
-            BorderSizePixel = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = "OutlineColor",
-            BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
-            TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
-            Parent = Holder,
+        
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Parent = TableFrame,
+        })
+        
+        New("UICorner", {
+            CornerRadius = UDim.new(0, 4),
+            Parent = TableFrame,
         })
 
-        -- Header row (fixed at top, not scrollable)
+        -- Header row
         local HeaderFrame = New("Frame", {
             BackgroundColor3 = "AccentColor",
-            BorderSizePixel = 0,
-            Size = UDim2.new(1, -3, 0, Info.HeaderHeight),
-            ZIndex = 2,
+            Size = UDim2.new(1, 0, 0, Info.HeaderHeight),
             Parent = TableFrame,
+        })
+        
+        New("UICorner", {
+            CornerRadius = UDim.new(0, 4),
+            Parent = HeaderFrame,
         })
 
         -- Create header columns
@@ -3315,40 +3298,46 @@ do
         for i, colName in ipairs(Info.Columns) do
             New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.new(columnWidth * (i - 1), 5, 0, 0),
-                Size = UDim2.new(columnWidth, -10, 1, 0),
-                Text = tostring(colName),
+                Position = UDim2.new(columnWidth * (i - 1), 4, 0, 0),
+                Size = UDim2.new(columnWidth, -8, 1, 0),
+                Text = colName,
                 TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 2,
                 Parent = HeaderFrame,
             })
         end
 
+        -- Content frame for rows
+        local ContentFrame = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 0, 0, Info.HeaderHeight),
+            Size = UDim2.new(1, 0, 1, -Info.HeaderHeight),
+            ClipsDescendants = true,
+            Parent = TableFrame,
+        })
+
         -- Row container reference
+        TableObj.ContentFrame = ContentFrame
         TableObj.TableFrame = TableFrame
-        TableObj.HeaderFrame = HeaderFrame
-        TableObj.Holder = Holder
         TableObj.ColumnWidth = columnWidth
 
         function TableObj:CreateRow(rowData, layoutOrder)
-            local yPos = Info.HeaderHeight + ((layoutOrder - 1) * self.RowHeight)
+            local yPos = (layoutOrder - 1) * self.RowHeight
             
             local RowFrame = New("Frame", {
-                BackgroundColor3 = "MainColor",
-                BackgroundTransparency = (layoutOrder % 2 == 0) and 0.5 or 0.8,
-                BorderSizePixel = 0,
+                BackgroundTransparency = (layoutOrder % 2 == 0) and 0.9 or 1,
+                BackgroundColor3 = "OutlineColor",
                 Position = UDim2.new(0, 0, 0, yPos),
-                Size = UDim2.new(1, -3, 0, self.RowHeight),
-                Parent = TableFrame,
+                Size = UDim2.new(1, 0, 0, self.RowHeight),
+                Parent = ContentFrame,
             })
 
             local cells = {}
             for i, cellData in ipairs(rowData) do
                 local CellLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.new(self.ColumnWidth * (i - 1), 5, 0, 0),
-                    Size = UDim2.new(self.ColumnWidth, -10, 1, 0),
+                    Position = UDim2.new(self.ColumnWidth * (i - 1), 4, 0, 0),
+                    Size = UDim2.new(self.ColumnWidth, -8, 1, 0),
                     Text = tostring(cellData),
                     TextSize = 11,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -3366,7 +3355,6 @@ do
         end
 
         function TableObj:AddRow(rowData)
-            if #self.Rows >= self.MaxRows then return nil end
             local row = self:CreateRow(rowData, #self.Rows + 1)
             table.insert(self.Rows, row)
             return row
@@ -3392,7 +3380,7 @@ do
 
         function TableObj:SetVisible(Visible)
             self.Visible = Visible
-            Holder.Visible = Visible
+            TableFrame.Visible = Visible
             Groupbox:Resize()
         end
 
@@ -3406,6 +3394,8 @@ do
         end
 
         Groupbox:Resize()
+
+        TableObj.Holder = TableFrame
         table.insert(Groupbox.Elements, TableObj)
 
         if Idx then
