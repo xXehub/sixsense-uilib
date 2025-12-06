@@ -3255,32 +3255,28 @@ do
     -- ==================== TABLE COMPONENT ====================
     function Funcs:AddTable(Idx, Info)
         Info = Info or {}
-        Info.Columns = Info.Columns or {"#", "Value"}
+        Info.Columns = Info.Columns or {"Column 1", "Column 2"}
         Info.Rows = Info.Rows or {}
         Info.MaxRows = Info.MaxRows or 10
-        Info.RowHeight = Info.RowHeight or 20
-        Info.HeaderHeight = Info.HeaderHeight or 24
+        Info.RowHeight = Info.RowHeight or 18
+        Info.HeaderHeight = Info.HeaderHeight or 20
         Info.Visible = Info.Visible ~= false
-        Info.Sortable = Info.Sortable ~= false
 
         local Groupbox = self
         local Container = Groupbox.Container
 
         local TableObj = {
             Columns = Info.Columns,
-            OriginalData = {},
             Rows = {},
             MaxRows = Info.MaxRows,
             RowHeight = Info.RowHeight,
             HeaderHeight = Info.HeaderHeight,
             Visible = Info.Visible,
-            SortColumn = nil,
-            SortAscending = true,
             Type = "Table",
         }
 
         -- Calculate table height
-        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 6
+        local tableHeight = Info.HeaderHeight + (Info.MaxRows * Info.RowHeight) + 4
 
         -- Main holder frame
         local Holder = New("Frame", {
@@ -3290,135 +3286,71 @@ do
             Parent = Container,
         })
 
-        -- Main table container
-        local TableFrame = New("Frame", {
+        -- Main table container with scroll
+        local TableFrame = New("ScrollingFrame", {
             BackgroundColor3 = "MainColor",
             BorderColor3 = "OutlineColor",
             BorderSizePixel = 1,
             Size = UDim2.new(1, 0, 1, 0),
-            ClipsDescendants = true,
-            Parent = Holder,
-        })
-
-        -- Header row
-        local HeaderFrame = New("Frame", {
-            BackgroundColor3 = "AccentColor",
-            BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 0, Info.HeaderHeight),
-            ZIndex = 2,
-            Parent = TableFrame,
-        })
-
-        -- Content scroll frame
-        local ContentFrame = New("ScrollingFrame", {
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Position = UDim2.new(0, 0, 0, Info.HeaderHeight),
-            Size = UDim2.new(1, 0, 1, -Info.HeaderHeight),
             CanvasSize = UDim2.new(0, 0, 0, 0),
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             ScrollBarThickness = 3,
             ScrollBarImageColor3 = "OutlineColor",
             BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
             TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
+            Parent = Holder,
+        })
+
+        -- Header row (fixed at top, not scrollable)
+        local HeaderFrame = New("Frame", {
+            BackgroundColor3 = "AccentColor",
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, -3, 0, Info.HeaderHeight),
+            ZIndex = 2,
             Parent = TableFrame,
         })
 
-        New("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = ContentFrame,
-        })
-
-        -- Create header columns with sort buttons
+        -- Create header columns
         local columnWidth = 1 / #Info.Columns
-        local HeaderButtons = {}
-        
         for i, colName in ipairs(Info.Columns) do
-            local HeaderBtn = New("TextButton", {
+            New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.new(columnWidth * (i - 1), 0, 0, 0),
-                Size = UDim2.new(columnWidth, 0, 1, 0),
-                Text = "",
+                Position = UDim2.new(columnWidth * (i - 1), 5, 0, 0),
+                Size = UDim2.new(columnWidth, -10, 1, 0),
+                Text = tostring(colName),
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
                 ZIndex = 2,
                 Parent = HeaderFrame,
             })
-            
-            local HeaderLabel = New("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 6, 0, 0),
-                Size = UDim2.new(1, -20, 1, 0),
-                Text = tostring(colName),
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 2,
-                Parent = HeaderBtn,
-            })
-            
-            local SortIndicator = New("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(1, -16, 0, 0),
-                Size = UDim2.new(0, 14, 1, 0),
-                Text = "",
-                TextSize = 12,
-                ZIndex = 2,
-                Parent = HeaderBtn,
-            })
-            
-            HeaderButtons[i] = {
-                Button = HeaderBtn,
-                Label = HeaderLabel,
-                Indicator = SortIndicator,
-            }
-            
-            if Info.Sortable then
-                HeaderBtn.MouseButton1Click:Connect(function()
-                    if TableObj.SortColumn == i then
-                        TableObj.SortAscending = not TableObj.SortAscending
-                    else
-                        TableObj.SortColumn = i
-                        TableObj.SortAscending = true
-                    end
-                    
-                    -- Update indicators
-                    for j, hdr in ipairs(HeaderButtons) do
-                        if j == i then
-                            hdr.Indicator.Text = TableObj.SortAscending and "▲" or "▼"
-                        else
-                            hdr.Indicator.Text = ""
-                        end
-                    end
-                    
-                    TableObj:Sort()
-                end)
-            end
         end
 
         -- Row container reference
         TableObj.TableFrame = TableFrame
         TableObj.HeaderFrame = HeaderFrame
-        TableObj.ContentFrame = ContentFrame
         TableObj.Holder = Holder
         TableObj.ColumnWidth = columnWidth
-        TableObj.HeaderButtons = HeaderButtons
 
         function TableObj:CreateRow(rowData, layoutOrder)
+            local yPos = Info.HeaderHeight + ((layoutOrder - 1) * self.RowHeight)
+            
             local RowFrame = New("Frame", {
-                BackgroundColor3 = (layoutOrder % 2 == 0) and "OutlineColor" or "MainColor",
-                BackgroundTransparency = (layoutOrder % 2 == 0) and 0.7 or 0.9,
+                BackgroundColor3 = "MainColor",
+                BackgroundTransparency = (layoutOrder % 2 == 0) and 0.5 or 0.8,
                 BorderSizePixel = 0,
+                Position = UDim2.new(0, 0, 0, yPos),
                 Size = UDim2.new(1, -3, 0, self.RowHeight),
-                LayoutOrder = layoutOrder,
-                Parent = ContentFrame,
+                Parent = TableFrame,
             })
 
             local cells = {}
             for i, cellData in ipairs(rowData) do
                 local CellLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.new(self.ColumnWidth * (i - 1), 6, 0, 0),
-                    Size = UDim2.new(self.ColumnWidth, -12, 1, 0),
+                    Position = UDim2.new(self.ColumnWidth * (i - 1), 5, 0, 0),
+                    Size = UDim2.new(self.ColumnWidth, -10, 1, 0),
                     Text = tostring(cellData),
-                    TextSize = 13,
+                    TextSize = 11,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     Parent = RowFrame,
@@ -3433,73 +3365,19 @@ do
             }
         end
 
-        function TableObj:Sort()
-            if not self.SortColumn or #self.OriginalData == 0 then return end
-            
-            local sortedData = {}
-            for _, row in ipairs(self.OriginalData) do
-                table.insert(sortedData, row)
-            end
-            
-            table.sort(sortedData, function(a, b)
-                local valA = a[self.SortColumn]
-                local valB = b[self.SortColumn]
-                
-                if type(valA) == "number" and type(valB) == "number" then
-                    if self.SortAscending then
-                        return valA < valB
-                    else
-                        return valA > valB
-                    end
-                else
-                    valA = tostring(valA):lower()
-                    valB = tostring(valB):lower()
-                    if self.SortAscending then
-                        return valA < valB
-                    else
-                        return valA > valB
-                    end
-                end
-            end)
-            
-            self:RenderRows(sortedData)
-        end
-
-        function TableObj:RenderRows(data)
-            -- Clear existing rows
-            for _, row in ipairs(self.Rows) do
-                if row.Frame then
-                    row.Frame:Destroy()
-                end
-            end
-            self.Rows = {}
-            
-            -- Create new rows
-            for i, rowData in ipairs(data) do
-                if i > self.MaxRows then break end
-                local row = self:CreateRow(rowData, i)
-                table.insert(self.Rows, row)
-            end
-        end
-
         function TableObj:AddRow(rowData)
             if #self.Rows >= self.MaxRows then return nil end
-            table.insert(self.OriginalData, rowData)
             local row = self:CreateRow(rowData, #self.Rows + 1)
             table.insert(self.Rows, row)
             return row
         end
 
         function TableObj:SetRows(rowsData)
-            self.OriginalData = {}
-            for _, row in ipairs(rowsData) do
-                table.insert(self.OriginalData, row)
-            end
-            
-            if self.SortColumn then
-                self:Sort()
-            else
-                self:RenderRows(rowsData)
+            self:Clear()
+            for i, rowData in ipairs(rowsData) do
+                if i > self.MaxRows then break end
+                local row = self:CreateRow(rowData, i)
+                table.insert(self.Rows, row)
             end
         end
 
@@ -3510,14 +3388,6 @@ do
                 end
             end
             self.Rows = {}
-            self.OriginalData = {}
-            
-            -- Reset sort indicators
-            for _, hdr in ipairs(self.HeaderButtons) do
-                hdr.Indicator.Text = ""
-            end
-            self.SortColumn = nil
-            self.SortAscending = true
         end
 
         function TableObj:SetVisible(Visible)
