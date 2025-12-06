@@ -33,7 +33,7 @@ local CustomImageManager = {}
 local CustomImageManagerAssets = {
     TransparencyTexture = {
         RobloxId = 139785960036434,
-        Path = "sixsense/TransparencyTexture.png",
+        Path = "sixsense-uilib/assets/TransparencyTexture.png",
         URL = BaseURL .. "assets/TransparencyTexture.png",
 
         Id = nil,
@@ -41,7 +41,7 @@ local CustomImageManagerAssets = {
 
     SaturationMap = {
         RobloxId = 4155801252,
-        Path = "sixsense/SaturationMap.png",
+        Path = "sixsense-uilib/assets/SaturationMap.png",
         URL = BaseURL .. "assets/SaturationMap.png",
 
         Id = nil,
@@ -80,7 +80,7 @@ do
 
         CustomImageManagerAssets[AssetName] = {
             RobloxId = RobloxAssetId,
-            Path = string.format("sixsense/%s", AssetName),
+            Path = string.format("sixsense-uilib/custom_assets/%s", AssetName),
             URL = URL,
 
             Id = nil,
