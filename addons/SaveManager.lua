@@ -491,9 +491,8 @@ local SaveManager = {} do
             return false, "failed to encode data"
         end
 
-        -- Base64 encode the JSON string
-        local base64Encoded = HttpService:Base64Encode(encoded)
-        return true, base64Encoded
+        -- Return the JSON string directly (no Base64 encoding)
+        return true, encoded
     end
 
     function SaveManager:ImportConfig(configString)
@@ -501,15 +500,9 @@ local SaveManager = {} do
             return false, "empty config string"
         end
 
-        -- Base64 decode the string
-        local success, decoded = pcall(HttpService.Base64Decode, HttpService, configString)
+        -- Directly decode JSON (no Base64 decoding needed)
+        local success, data = pcall(HttpService.JSONDecode, HttpService, configString)
         if not success then
-            return false, "invalid config string (decode error)"
-        end
-
-        -- JSON decode the data
-        local jsonSuccess, data = pcall(HttpService.JSONDecode, HttpService, decoded)
-        if not jsonSuccess then
             return false, "invalid config format (parse error)"
         end
 
