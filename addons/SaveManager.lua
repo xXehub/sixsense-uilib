@@ -8,6 +8,35 @@ end)
 local HttpService: HttpService = cloneref(game:GetService("HttpService"))
 local isfolder, isfile, listfiles = isfolder, isfile, listfiles
 
+-- Simple XOR encryption for config strings
+local function xorEncrypt(str, key)
+    local result = {}
+    local keyLen = #key
+    for i = 1, #str do
+        local char = string.byte(str, i)
+        local keyChar = string.byte(key, ((i - 1) % keyLen) + 1)
+        table.insert(result, string.char(bit32.bxor(char, keyChar)))
+    end
+    return table.concat(result)
+end
+
+local function xorDecrypt(str, key)
+    return xorEncrypt(str, key) -- XOR is symmetric
+end
+
+-- Convert binary string to hex for safe clipboard transfer
+local function toHex(str)
+    return (str:gsub('.', function(c)
+        return string.format('%02X', string.byte(c))
+    end))
+end
+
+local function fromHex(hex)
+    return (hex:gsub('..', function(cc)
+        return string.char(tonumber(cc, 16))
+    end))
+end
+
 if typeof(clonefunction) == "function" then
     -- Fix is_____ functions for shitsploits, those functions should never error, only return a boolean.
 
@@ -491,8 +520,12 @@ local SaveManager = {} do
             return false, "failed to encode data"
         end
 
-        -- Return the JSON string directly (no Base64 encoding)
-        return true, encoded
+        -- Encrypt with XOR and convert to hex
+        local encryptionKey = "SixSenseUILib2024"
+        local encrypted = xorEncrypt(encoded, encryptionKey)
+        local hexEncoded = toHex(encrypted)
+        
+        return true, hexEncoded
     end
 
     function SaveManager:ImportConfig(configString)
@@ -500,10 +533,19 @@ local SaveManager = {} do
             return false, "empty config string"
         end
 
-        -- Directly decode JSON (no Base64 decoding needed)
-        local success, data = pcall(HttpService.JSONDecode, HttpService, configString)
+        -- Decrypt from hex
+        local decryptSuccess, hexDecoded = pcall(fromHex, configString)
+        if not decryptSuccess then
+            return false, "invalid encrypted format"
+        end
+        
+        local encryptionKey = "SixSenseUILib2024"
+        local decrypted = xorDecrypt(hexDecoded, encryptionKey)
+        
+        -- Decode JSON
+        local success, data = pcall(HttpService.JSONDecode, HttpService, decrypted)
         if not success then
-            return false, "invalid config format (parse error)"
+            return false, "invalid config format (decrypt/parse error)"
         end
 
         if not data.objects then
@@ -586,8 +628,17 @@ local SaveManager = {} do
         section:AddButton("Import from clipboard", function()
             local importString = ""
             
-            if getclipboard then
-                importString = getclipboard()
+            -- Try multiple clipboard function names
+            local clipboardFunc = getclipboard or get_clipboard or GetClipboard
+            
+            if clipboardFunc then
+                local success, result = pcall(clipboardFunc)
+                if success then
+                    importString = result
+                else
+                    self.Library:Notify("Failed to read clipboard", 2)
+                    return
+                end
             else
                 self.Library:Notify("Clipboard not supported", 2)
                 return
