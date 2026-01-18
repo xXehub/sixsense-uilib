@@ -206,6 +206,10 @@ local Library = {
     DPIRegistry = {},
     
     ImageManager = CustomImageManager,
+    
+    -- User Profile settings
+    UserProfileNameVisible = true,
+    Window = nil,
 }
 
 if RunService:IsStudio() then
@@ -5125,8 +5129,8 @@ do
         end
 
         Dropdown:UpdateColors()
-        Dropdown:Display()
         Dropdown:BuildDropdownList()
+        Dropdown:Display()
         Groupbox:Resize()
 
         Dropdown.Holder = Holder
@@ -6917,17 +6921,95 @@ function Library:CreateWindow(WindowInfo)
         Library:UpdateDPI(UserInfoContainer, { Position = UDim2.fromOffset(48, 0), Size = UDim2.new(1, -88, 1, 0) })
         LayoutRefs.UserInfoContainer = UserInfoContainer
 
-        local UsernameLabel = New("TextLabel", {
+        -- Username container (label + eye toggle)
+        local UsernameContainer = New("Frame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 18),
+            Parent = UserInfoContainer,
+        })
+        Library:UpdateDPI(UsernameContainer, { Size = UDim2.new(1, 0, 0, 18) })
+
+        local UsernameLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, -18, 1, 0),
             Text = "Username",
             TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextTruncate = Enum.TextTruncate.AtEnd,
-            Parent = UserInfoContainer,
+            Parent = UsernameContainer,
         })
-        Library:UpdateDPI(UsernameLabel, { Size = UDim2.new(1, 0, 0, 18), TextSize = 14 })
+        Library:UpdateDPI(UsernameLabel, { Size = UDim2.new(1, -18, 1, 0), TextSize = 14 })
         LayoutRefs.UsernameLabel = UsernameLabel
+
+        -- Eye toggle button for show/hide username
+        local EyeIcon = Library:GetIcon("eye")
+        local EyeOffIcon = Library:GetIcon("eye-off")
+        local UsernameVisible = Library.UserProfileNameVisible ~= false -- Default true, read from Library setting
+        local OriginalUsername = ""
+        
+        local EyeToggle = New("ImageButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            BackgroundTransparency = 1,
+            Image = EyeIcon and EyeIcon.Url or "",
+            ImageColor3 = "FontColor",
+            ImageRectOffset = EyeIcon and EyeIcon.ImageRectOffset or Vector2.zero,
+            ImageRectSize = EyeIcon and EyeIcon.ImageRectSize or Vector2.zero,
+            ImageTransparency = 0.5,
+            Position = UDim2.new(1, 0, 0.5, 0),
+            Size = UDim2.fromOffset(14, 14),
+            Parent = UsernameContainer,
+        })
+        Library:UpdateDPI(EyeToggle, { Size = UDim2.fromOffset(14, 14) })
+        LayoutRefs.EyeToggle = EyeToggle
+        
+        local function UpdateUsernameVisibility()
+            if UsernameVisible then
+                UsernameLabel.Text = OriginalUsername
+                if EyeIcon then
+                    EyeToggle.Image = EyeIcon.Url
+                    EyeToggle.ImageRectOffset = EyeIcon.ImageRectOffset
+                    EyeToggle.ImageRectSize = EyeIcon.ImageRectSize
+                end
+            else
+                -- Censor username with asterisks
+                UsernameLabel.Text = string.rep("*", math.min(#OriginalUsername, 8))
+                if EyeOffIcon then
+                    EyeToggle.Image = EyeOffIcon.Url
+                    EyeToggle.ImageRectOffset = EyeOffIcon.ImageRectOffset
+                    EyeToggle.ImageRectSize = EyeOffIcon.ImageRectSize
+                end
+            end
+        end
+        
+        EyeToggle.MouseButton1Click:Connect(function()
+            UsernameVisible = not UsernameVisible
+            UpdateUsernameVisibility()
+            -- Update library setting for save
+            Library.UserProfileNameVisible = UsernameVisible
+        end)
+        
+        -- Hover effect
+        EyeToggle.MouseEnter:Connect(function()
+            TweenService:Create(EyeToggle, TweenInfo.new(0.15, Enum.EasingStyle.Quint), {
+                ImageTransparency = 0
+            }):Play()
+        end)
+        EyeToggle.MouseLeave:Connect(function()
+            TweenService:Create(EyeToggle, TweenInfo.new(0.15, Enum.EasingStyle.Quint), {
+                ImageTransparency = 0.5
+            }):Play()
+        end)
+        
+        LayoutRefs.UsernameVisible = function() return UsernameVisible end
+        LayoutRefs.SetUsernameVisible = function(visible)
+            UsernameVisible = visible
+            Library.UserProfileNameVisible = visible
+            UpdateUsernameVisibility()
+        end
+        LayoutRefs.SetOriginalUsername = function(name)
+            OriginalUsername = name
+            UpdateUsernameVisibility()
+        end
 
         local StatusBadge = New("Frame", {
             BackgroundColor3 = "AccentColor",
@@ -7223,9 +7305,18 @@ function Library:CreateWindow(WindowInfo)
             LayoutRefs.UserAvatar.Image = Info.Avatar
         end
 
-        -- Set username
-        if Info.Name and LayoutRefs.UsernameLabel then
-            LayoutRefs.UsernameLabel.Text = Info.Name
+        -- Set username (use new system with eye toggle)
+        if Info.Name then
+            if LayoutRefs.SetOriginalUsername then
+                LayoutRefs.SetOriginalUsername(Info.Name)
+            elseif LayoutRefs.UsernameLabel then
+                LayoutRefs.UsernameLabel.Text = Info.Name
+            end
+            
+            -- Apply saved visibility setting if exists
+            if Library.UserProfileNameVisible ~= nil and LayoutRefs.SetUsernameVisible then
+                LayoutRefs.SetUsernameVisible(Library.UserProfileNameVisible)
+            end
         end
 
         -- Set status
@@ -7760,8 +7851,9 @@ function Library:CreateWindow(WindowInfo)
                 Parent = BoxHolder,
             })
 
+            -- Initial collapsed height: 36 (header) + 4 (padding) = 40
             local Background = Library:MakeOutline(BoxHolder, WindowInfo.CornerRadius)
-            Background.Size = UDim2.fromScale(1, 0)
+            Background.Size = UDim2.new(1, 0, 0, 40 * Library.DPIScale)
             Library:UpdateDPI(Background, {
                 Size = false,
             })
@@ -8643,6 +8735,10 @@ function Library:CreateWindow(WindowInfo)
     Library:GiveSignal(UserInputService.WindowFocusReleased:Connect(function()
         Library.IsRobloxFocused = false
     end))
+
+    -- Expose LayoutRefs for external access (SaveManager etc)
+    Window.LayoutRefs = LayoutRefs
+    Library.Window = Window
 
     return Window
 end

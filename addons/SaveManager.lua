@@ -275,6 +275,15 @@ local SaveManager = {} do
             table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
         end
 
+        -- Save UserProfile name visibility setting
+        if self.Library.UserProfileNameVisible ~= nil then
+            table.insert(data.objects, {
+                type = "UserProfileSetting",
+                idx = "__UserProfileNameVisible",
+                value = self.Library.UserProfileNameVisible
+            })
+        end
+
         local success, encoded = pcall(HttpService.JSONEncode, HttpService, data)
         if not success then
             return false, "failed to encode data"
@@ -317,6 +326,25 @@ local SaveManager = {} do
                         self.Library.ToggleKeybind = keyCode
                     end
                 end
+                continue
+            end
+            
+            -- Handle UserProfile settings
+            if option.type == "UserProfileSetting" and option.idx == "__UserProfileNameVisible" then
+                self.Library.UserProfileNameVisible = option.value
+                -- Apply to UI (retry until Window is ready)
+                task.spawn(function()
+                    local maxRetries = 50 -- 5 seconds max wait
+                    local retryCount = 0
+                    while retryCount < maxRetries do
+                        if self.Library.Window and self.Library.Window.LayoutRefs and self.Library.Window.LayoutRefs.SetUsernameVisible then
+                            self.Library.Window.LayoutRefs.SetUsernameVisible(option.value)
+                            break
+                        end
+                        retryCount = retryCount + 1
+                        task.wait(0.1)
+                    end
+                end)
                 continue
             end
             
