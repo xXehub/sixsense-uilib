@@ -6952,8 +6952,8 @@ function Library:CreateWindow(WindowInfo)
         })
         Library:UpdateDPI(StatusLabel, { TextSize = 10 })
         
-        -- Register StatusLabel for theme updates
-        Library:AddSchemeColor(StatusLabel, "TextColor3", "MainColor")
+        -- Register for theme updates
+        Library.Registry[StatusLabel] = { TextColor3 = "MainColor" }
         
         LayoutRefs.StatusBadge = StatusBadge
         LayoutRefs.StatusLabel = StatusLabel
